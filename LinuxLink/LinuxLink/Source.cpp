@@ -8,7 +8,11 @@
 #include<string>
 #include<iostream>
 #include<conio.h>
-//#pragma comment(lib, "Ws2_32.lib")
+#include<string>
+#pragma comment(lib, "Ws2_32.lib")
+#define CHARCODE ((lParam>>16)&0x00ff)
+#define KEYDOWN 0x8000
+#define KEYUP   0x4000
 
 void setupSocketProtocols();
 void listenForConnections();
@@ -33,11 +37,11 @@ WSADATA       winSock;
 
 char signl[20];
 int c;
-int16_t       x = 0;
-int16_t       y = 0;
-int16_t       prev_x = 0;
-int16_t       prev_y = 0;
-uint8_t       size_of_input = 0;
+int16_t       x{0};
+int16_t       y{0};
+int16_t       prev_x{0};
+int16_t       prev_y{0};
+uint8_t       size_of_input{0};
 
 struct input {
 	uint8_t  mData[3];
@@ -48,31 +52,32 @@ struct input {
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
 
-  
+  static HANDLE hThread;
+  static DWORD threadID;
+  static char hex[20];
 
 	switch (Msg) {			
 
     case WM_CREATE:
       initializeConnection(hwnd);
-      CreateThread(NULL, 0, watchSignalThread(), NULL, 0, NULL);
 		  break;
     
     case WM_MOUSEMOVE: 
-			x = GET_X_LPARAM(lParam);
-			y = GET_Y_LPARAM(lParam);
-			input.mData[1] = x - prev_x;
-			input.mData[2] = y - prev_y;
+			//x = GET_X_LPARAM(lParam);
+			//y = GET_Y_LPARAM(lParam);
+			input.mData[1] = (lParam & 0xffff)       - prev_x;
+			input.mData[2] = ((lParam>>16) & 0xffff) - prev_y;
 			break;
 	  
-    case WM_MOUSEWHEEL: input.mWheel = GET_WHEEL_DELTA_WPARAM(wParam); break;
+    case WM_MOUSEWHEEL  : input.mWheel = GET_WHEEL_DELTA_WPARAM(wParam); break;
 		case WM_LBUTTONDOWN : input.mData[0] ^= 0x1; break;
 		case WM_LBUTTONUP   : input.mData[0] ^= 0x1; break;
 		case WM_RBUTTONDOWN : input.mData[0] ^= 0x2; break;
 		case WM_RBUTTONUP   : input.mData[0] ^= 0x2; break;
-    case WM_KEYDOWN     : input.kData = ((lParam >> 16) & 0x00ff) + 0x8000; break;
-		case WM_KEYUP       : input.kData = ((lParam >> 16) & 0x00ff) + 0x4000; break;
-    case WM_SYSKEYDOWN  : input.kData = ((lParam >> 16) & 0x00ff) + 0x8000; break;
-    case WM_SYSKEYUP    : input.kData = ((lParam >> 16) & 0x00ff) + 0x4000; break;
+    case WM_KEYDOWN     : input.kData = CHARCODE+KEYDOWN; break;
+		case WM_KEYUP       : input.kData = CHARCODE+KEYUP;   break;
+    case WM_SYSKEYDOWN  : input.kData = CHARCODE+KEYDOWN; break;
+    case WM_SYSKEYUP    : input.kData = CHARCODE+KEYUP;   break;
 
 		case WM_DESTROY:  
 			send(signalSock, (char*)"exit", 4, 0); 
@@ -86,14 +91,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
 			PostQuitMessage(0);
 			break;
     
-
-		
-    default: return DefWindowProc(hwnd, Msg, wParam, lParam); break;
+    default:       
+      return DefWindowProc(hwnd, Msg, wParam, lParam); break;
 	}
 	
   send(mouseSock, (char*)&input, size_of_input, 0);
-	prev_x = x;
-	prev_y = y;
+	prev_x = (lParam & 0xffff);
+	prev_y = ((lParam>>16) & 0xffff);
 	memset(&input.mData[1], 0, 2);
 	memset(&input.kData, 0, 2);
 	memset(&input.mWheel, 0, 2);
@@ -103,7 +107,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
 
 
 
-int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+int CALLBACK WinMain(HINSTANCE hInstance, 
+                     HINSTANCE hPrevInstance, 
+                     LPSTR lpCmdLine, 
+                     int nCmdShow) {
 	                                            
 	WNDCLASSEX wc;
 	
@@ -253,6 +260,6 @@ void acceptConnection() {
   
   
   //Sleep(500);
-  //FreeConsole();
+  FreeConsole();
 }
 
