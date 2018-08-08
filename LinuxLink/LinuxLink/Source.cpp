@@ -35,19 +35,22 @@ SOCKET        connectSock;
 SOCKET        signalSock;
 WSADATA       winSock;
 
-char signl[20];
-int c;
-int16_t       x{0};
-int16_t       y{0};
-int16_t       prev_x{0};
-int16_t       prev_y{0};
-uint8_t       size_of_input{0};
+char    signl[20];
+int     c;      
+int16_t x{0};
+int16_t y{0};
+int16_t prev_x{0};
+int16_t prev_y{0};
+uint8_t size_of_input{0};
 
 struct input {
-	uint8_t  mData[3];
-	uint16_t kData = 0;
-	uint8_t  mWheel = 0;
+  uint8_t  mData[3];
+  uint16_t kData = 0;
+  uint8_t  mWheel = 0;
 } input;
+
+//uint16_t dataToSend;
+
 
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
@@ -63,46 +66,44 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
 		  break;
     
     case WM_MOUSEMOVE: 
-			//x = GET_X_LPARAM(lParam);
-			//y = GET_Y_LPARAM(lParam);
-			input.mData[1] = (lParam & 0xffff)       - prev_x;
-			input.mData[2] = ((lParam>>16) & 0xffff) - prev_y;
-			break;
+		  input.mData[1] = (lParam & 0xffff)       - prev_x;
+		  input.mData[2] = ((lParam>>16) & 0xffff) - prev_y;
+		  break;
 	  
     case WM_MOUSEWHEEL  : input.mWheel = GET_WHEEL_DELTA_WPARAM(wParam); break;
-		case WM_LBUTTONDOWN : input.mData[0] ^= 0x1; break;
-		case WM_LBUTTONUP   : input.mData[0] ^= 0x1; break;
-		case WM_RBUTTONDOWN : input.mData[0] ^= 0x2; break;
-		case WM_RBUTTONUP   : input.mData[0] ^= 0x2; break;
+    case WM_LBUTTONDOWN : input.mData[0] ^= 0x1; break;
+    case WM_LBUTTONUP   : input.mData[0] ^= 0x1; break;
+    case WM_RBUTTONDOWN : input.mData[0] ^= 0x2; break;
+    case WM_RBUTTONUP   : input.mData[0] ^= 0x2; break;
     case WM_KEYDOWN     : input.kData = CHARCODE+KEYDOWN; break;
-		case WM_KEYUP       : input.kData = CHARCODE+KEYUP;   break;
+    case WM_KEYUP       : input.kData = CHARCODE+KEYUP;   break;
     case WM_SYSKEYDOWN  : input.kData = CHARCODE+KEYDOWN; break;
     case WM_SYSKEYUP    : input.kData = CHARCODE+KEYUP;   break;
 
-		case WM_DESTROY:  
-			send(signalSock, (char*)"exit", 4, 0); 
-			Sleep(1000);
-			PostQuitMessage(0); 
-			break;
+    case WM_DESTROY:  
+		  send(signalSock, (char*)"exit", 4, 0); 
+		  Sleep(1000);
+		  PostQuitMessage(0); 
+		  break;
 		
     case WM_CLOSE:
-			send(signalSock, (char*)"exit", 4, 0); 
-			Sleep(1000);
-			PostQuitMessage(0);
-			break;
+		  send(signalSock, (char*)"exit", 4, 0); 
+		  Sleep(1000);
+		  PostQuitMessage(0);
+		  break;
     
     default:       
       return DefWindowProc(hwnd, Msg, wParam, lParam); break;
 	}
 	
   send(mouseSock, (char*)&input, size_of_input, 0);
-	prev_x = (lParam & 0xffff);
-	prev_y = ((lParam>>16) & 0xffff);
-	memset(&input.mData[1], 0, 2);
-	memset(&input.kData, 0, 2);
-	memset(&input.mWheel, 0, 2);
+  prev_x = (lParam & 0xffff);
+  prev_y = ((lParam>>16) & 0xffff);
+  memset(&input.mData[1], 0, 2);
+  memset(&input.kData, 0, 2);
+  memset(&input.mWheel, 0, 2);
 	
-	return 0;
+  return 0;
 }
 
 
